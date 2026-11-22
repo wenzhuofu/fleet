@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "fleet",
+  "description": "desk: drive remote engineering machines from Claude Code",
+  "owner": { "name": "wenzhuofu" },
+  "plugins": [
+    {
+      "name": "desk",
+      "source": "./",
+      "description": "Remote engineering machines as Claude Code tools (desk-node + desk gateway)",
+      "category": "development"
+    }
+  ]
+}

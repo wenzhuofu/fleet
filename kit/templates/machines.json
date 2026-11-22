@@ -1,0 +1,11 @@
+{
+  "default": null,
+  "machines": {
+    "vps": {
+      "local": true,
+      "os": "linux",
+      "defaultDir": "@FLEET_HOME@",
+      "note": "控制中心本机"
+    }
+  }
+}

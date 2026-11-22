@@ -1,0 +1,11 @@
+#!/bin/sh
+# Run a desk script with Node 24: $DESK_NODE, ~/opt/node24/bin/node, or node on PATH.
+#   bin/desk-node24 <script.mjs relative to the repo> [args]
+root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+script=$1; shift
+for n in "${DESK_NODE:-}" "$HOME/opt/node24/bin/node" "$(command -v node 2>/dev/null)"; do
+  [ -n "$n" ] && [ -x "$n" ] || continue
+  case $("$n" --version 2>/dev/null) in v24.*) exec "$n" "$root/$script" "$@" ;; esac
+done
+echo "desk: Node 24 not found; install it or set DESK_NODE=/path/to/node" >&2
+exit 1

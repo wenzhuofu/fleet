@@ -1,0 +1,3 @@
+#!/bin/sh
+# desk-copy <from> <to> [--no-backup]: copy one file between the VPS and a machine (see README).
+exec "$(dirname "$(readlink -f "$0")")/desk-node24" packages/gateway/src/copy-cli.mjs "$@"

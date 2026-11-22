@@ -1,0 +1,6 @@
+[Unit]
+Description=Clean stale fleet temporary files and logs
+[Service]
+Type=oneshot
+ExecStart=@FLEET_REPO@/deploy/vps/bin/fleet-tidy
+UMask=0077

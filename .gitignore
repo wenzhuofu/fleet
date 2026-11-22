@@ -1,0 +1,12 @@
+*.key
+*.log
+*.token
+.desk-data/
+.env
+/kit/fleet.conf
+coverage/
+dist/
+node_modules/
+
+__pycache__/
+*.py[cod]

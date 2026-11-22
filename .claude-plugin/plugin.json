@@ -1,0 +1,20 @@
+{
+  "name": "desk",
+  "version": "0.3.0",
+  "description": "Remote engineering machines as Claude Code tools: read, edit, search, run commands and copy files on Windows machines running desk-node, from any directory.",
+  "author": {
+    "name": "wenzhuofu"
+  },
+  "repository": "https://github.com/wenzhuofu/fleet",
+  "keywords": [
+    "remote",
+    "windows",
+    "mcp",
+    "fleet"
+  ],
+  "mcpServers": {
+    "desk": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/desk-gateway"
+    }
+  }
+}

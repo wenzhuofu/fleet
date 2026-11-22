@@ -1,0 +1,22 @@
+# Orca runtime server: the desktop, browser and phone entry point to this VPS (tailnet only).
+# Claude sessions opened from Orca run inside this unit, so its limit covers them too.
+[Unit]
+Description=Orca server
+After=network-online.target
+
+[Service]
+Environment=DO_NOT_TRACK=1
+Environment=ORCA_TELEMETRY_DISABLED=1
+Environment=ORCA_TERMINAL_MEMORY_MAX=@ORCA_TERMINAL_MEMORY_MAX@
+Environment=ORCA_TERMINAL_MEMORY_SWAP_MAX=0
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Listens on all interfaces (pairing fails with --bind <tailnet ip>); --refuse-public rejects
+# every peer outside localhost, LAN and the tailnet, and the VPS firewall should block the port.
+ExecStart=@OPT_DIR@/orca/opt/Orca/resources/bin/orca-ide serve --port @ORCA_PORT@ --pairing-address @ORCA_ADDRESS@ --refuse-public --supervise
+MemoryHigh=@ORCA_MEMORY_HIGH@
+MemoryMax=@ORCA_MEMORY_MAX@
+CPUQuota=150%
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

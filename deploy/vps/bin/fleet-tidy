@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+import argparse, os, shutil, stat, time
+from pathlib import Path
+DAY, BACKUP_LIMIT = 86400, 200 * 1024 * 1024
+PREFIXES = ('fleet-fs-', 'fleet-localfs-', 'fleet-source-', 'fleet-nogit-', 'fleet-wsapi-', 'session-sync-home-', 'session-prune-home-', 'file-tree-', 'desk-gw-', 'desk-repo-', 'playwright-artifacts-', '.com.google.Chrome.', 'com.google.Chrome.', 'scoped_dir', 'tmp.')
+UID = os.getuid() if hasattr(os, 'getuid') else Path.home().stat().st_uid
+def children(path, uid=None):
+    try:
+        s = path.lstat(); return list(path.iterdir()) if stat.S_ISDIR(s.st_mode) and (uid is None or s.st_uid == uid) else []
+    except OSError: return []
+def tree_size(path, now, age, uid):
+    size, todo = 0, [path]
+    while todo:
+        p = todo.pop()
+        try: s = p.lstat()
+        except OSError: return None
+        if s.st_uid != uid or now - s.st_mtime < age or p.name.startswith(('tmux-', 'systemd-')): return None
+        if stat.S_ISDIR(s.st_mode):
+            try: todo.extend(p.iterdir())
+            except OSError: return None
+        elif stat.S_ISREG(s.st_mode): size += s.st_size
+        else: return None
+    return size
+def run(tmp='/tmp', backups=None, log=None, uid=UID, now=None, dry_run=False):
+    now = time.time() if now is None else now; tmp, backups, log = Path(tmp), Path(backups or Path.home() / '.local/state/desk-fleet/copy-backups'), Path(log or Path.home() / '.local/state/desk-fleet/gateway.log')
+    actions, rotate = {}, False
+    for p in children(tmp):
+        if p.name.startswith(PREFIXES) or (p.name.startswith('claude-skill-') and p.suffix == '.zip' and p.is_file()):
+            n = tree_size(p, now, 2 * DAY, uid)
+            if n is not None: actions[p] = n
+    for project in children(tmp / f'claude-{uid}', uid):
+        for session in children(project, uid):
+            n = tree_size(session, now, 7 * DAY, uid) if session.is_dir() else None
+            if n is not None: actions[session] = n
+    files = [(p, s) for p in children(backups, uid) if stat.S_ISREG((s := p.lstat()).st_mode) and s.st_uid == uid]; actions.update((p, s.st_size) for p, s in files if now - s.st_mtime >= 3 * DAY)
+    total = sum(s.st_size for p, s in files if p not in actions)
+    for p, s in sorted(files, key=lambda item: item[1].st_mtime):
+        if total <= BACKUP_LIMIT: break
+        if p not in actions and now - s.st_mtime >= DAY: actions[p] = s.st_size; total -= s.st_size
+    old = Path(str(log) + '.1')
+    try:
+        s = log.lstat()
+        if stat.S_ISREG(s.st_mode) and s.st_uid == uid and s.st_size > 5 * 1024 * 1024:
+            try: o = old.lstat()
+            except FileNotFoundError: o = None
+            rotate = o is None or (stat.S_ISREG(o.st_mode) and o.st_uid == uid and now - o.st_mtime >= DAY)
+    except OSError: pass
+    removed = freed = errors = rotated = 0
+    if not dry_run:
+        for p, size in actions.items():
+            try:
+                if stat.S_ISDIR(p.lstat().st_mode): shutil.rmtree(p)
+                else: p.unlink()
+                removed += 1; freed += size
+            except OSError: errors += 1
+        if rotate:
+            try:
+                os.replace(log, old); fd = os.open(log, os.O_CREAT | os.O_WRONLY | os.O_APPEND, 0o600); os.close(fd); rotated = 1
+            except OSError: errors += 1
+    return {'actions': actions, 'rotate': rotate, 'removed': removed, 'freed': freed, 'rotated': rotated, 'errors': errors}
+def main():
+    parser = argparse.ArgumentParser(description='Clean stale fleet temporary files and logs'); parser.add_argument('--dry-run', action='store_true'); args = parser.parse_args(); r = run(dry_run=args.dry_run)
+    if args.dry_run:
+        for p in r['actions']: print(f'would remove {p}')
+        if r['rotate']: print(f'would rotate {Path.home() / ".local/state/desk-fleet/gateway.log"}')
+    print(f"fleet-tidy: planned={len(r['actions'])}; removed={r['removed']}; freed={r['freed']} bytes; rotated={r['rotated']}; errors={r['errors']}")
+    return int(bool(r['errors']))
+if __name__ == '__main__': raise SystemExit(main())

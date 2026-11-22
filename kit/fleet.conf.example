@@ -1,0 +1,16 @@
+# kit/bootstrap-vps.sh configuration. Copy to fleet.conf and edit; every value has a default.
+# Directories
+FLEET_HOME="$HOME/fleet"                 # holds desk-fleet/ and machines.json
+OPT_DIR="$HOME/opt"                      # node24/ and orca/ go here
+# Source (git URL or path). Defaults to the checkout this script runs from.
+DESK_FLEET_REPO=""
+# Runtimes
+NODE24_VERSION="v24.22.1"                # desk-gateway
+ORCA_VERSION="1.4.268"                   # Orca desktop package, run headless as `orca-ide serve`
+ORCA_DEB_SHA256="ce08aa4bb05972ee3acc89f6c97ce6140c84014a14b0c7e70fe6ece1b40b28a7"   # change together with ORCA_VERSION
+# Orca server (tailnet only; clients pair with `orca-ide pair --address <tailnet ip>`)
+ORCA_PORT="6768"
+ORCA_ADDRESS=""                          # pairing address; default: this VPS's tailnet IPv4
+ORCA_MEMORY_HIGH="2200M"                 # Orca plus the Claude sessions opened from it
+ORCA_MEMORY_MAX="2800M"
+ORCA_TERMINAL_MEMORY_MAX="1200M"         # per Orca terminal

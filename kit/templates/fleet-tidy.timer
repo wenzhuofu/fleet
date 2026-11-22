@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily fleet temporary-file cleanup
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+Unit=fleet-tidy.service
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,14 @@
+{
+  "name": "@desk-fleet/gateway",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "desk-gateway: stdio MCP server that forwards tool calls to desk-node machines",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "start": "node src/main.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}
