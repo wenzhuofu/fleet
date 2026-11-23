@@ -1,13 +1,20 @@
-# fleet / desk
+# fleet
 
-**desk** turns remote engineering machines into Claude Code tools. Claude Code runs on a small control host (a VPS); each Windows PC runs **desk-node**; the desk plugin gives every Claude Code session on the VPS tools that act on those PCs — in any directory, with no per-project setup.
+One small control host (a VPS) running Claude Code, several engineering machines, and the agents on them, working as one team. Two parts:
 
-desk 把远程工程机变成 Claude Code 的工具：Claude Code 跑在一台控制机（VPS）上，每台 Windows 工程机跑 desk-node，装好 desk 插件后，VPS 上任意目录里的 Claude Code 会话都能直接读写、搜索、运行命令、传文件。
+- **desk**: a Claude Code plugin that turns remote Windows machines into tools. Every Claude Code session on the VPS can read, edit, search, run commands and move files on those PCs, in any directory, with no per-project setup.
+- **handoff**: passes a task between agents (Claude, Codex, Antigravity, ...) on any machines and back, as many times as needed. Each agent resumes its own session; a hub keeps the snapshots, the notes and who holds the task.
+
+一台控制机（VPS）上的 Claude Code、多台工程机和机器上的各种 agent，像一个团队一样协作。两部分：
+
+- **desk**：Claude Code 插件。装好之后，VPS 上任意目录里的 Claude Code 会话都能直接读写、搜索、运行命令、传文件到各台 Windows 工程机。
+- **handoff**：在任意机器上的 agent（Claude、Codex、Antigravity……）之间来回传递一个任务，次数不限。各 agent 续接自己的会话；hub 保存快照、交接说明和当前负责人。
 
 ```
 Claude Code (VPS, any directory)
-   └─ desk plugin → desk gateway (stdio MCP, one per session)
-         └─ tailnet HTTPS/HTTP + token → desk-node on each Windows PC
+   ├─ desk plugin → desk gateway (stdio MCP, one per session)
+   │     └─ tailnet + token → desk-node on each Windows PC
+   └─ handoff ⇄ hub (bare Git repository on the VPS) ⇄ handoff on each PC ⇄ Codex, Antigravity, ...
 ```
 
 ## Tools
@@ -70,7 +77,7 @@ cd ~/fleet/desk-fleet && cp kit/fleet.conf.example kit/fleet.conf   # optional e
 kit/bootstrap-vps.sh kit/fleet.conf
 ```
 
-Bootstrap installs Node 24 and Claude Code if missing, writes `~/fleet/machines.json`, installs the desk plugin from this checkout, puts `desk` and `desk-copy` on PATH, and runs `kit/fleet-doctor.sh`. It also installs the optional [Orca](https://github.com/stablyai/orca) server for desktop/phone access and a daily `/tmp` cleanup timer.
+Bootstrap installs Node 24 and Claude Code if missing, writes `~/fleet/machines.json`, installs the desk plugin from this checkout, puts `desk`, `desk-copy` and `handoff` on PATH, and runs `kit/fleet-doctor.sh`. It also installs the optional [Orca](https://github.com/stablyai/orca) server for desktop/phone access and a daily `/tmp` cleanup timer.
 
 Only the plugin, on an existing Claude Code setup:
 
@@ -99,6 +106,22 @@ On the VPS run `kit/new-machine.sh start <name>` and follow the printed PowerShe
 ```
 
 `ssh` (optional) is an out-of-band alias used for diagnostics and `Machines restart`.
+
+### 3. handoff (optional)
+
+On the VPS, once: `handoff hub-init ~/handoff/hub.git --admins vps` and `handoff setup --machine vps --hub ~/handoff/hub.git --root ~/handoff/work`.
+
+On each Windows machine (Python 3 and Git for Windows; in Git Bash):
+
+```sh
+mkdir -p ~/.handoff/bin ~/bin    # copy handoff/handoff.py to ~/.handoff/bin/ (e.g. with desk Copy)
+printf '#!/usr/bin/env bash\nexec python "$HOME/.handoff/bin/handoff.py" "$@"\n' > ~/bin/handoff && chmod +x ~/bin/handoff
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/handoff_ed25519   # add a Host handoff-hub entry for the VPS using this key
+handoff setup --machine <name> --hub handoff-hub:handoff/hub.git --root D:/handoff
+```
+
+On the VPS, authorize that key for the hub only, which also fixes the machine's identity:
+`command="python3 /home/<user>/handoff/hub.git/hooks/handoff.py serve <name> /home/<user>/handoff/hub.git",restrict ssh-ed25519 AAAA…` in `~/.ssh/authorized_keys`. Check with `handoff doctor`.
 
 ## Repository
 
