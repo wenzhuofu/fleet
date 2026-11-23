@@ -6,8 +6,8 @@ OPT_DIR="$HOME/opt"                      # node24/ and orca/ go here
 DESK_FLEET_REPO=""
 # Runtimes
 NODE24_VERSION="v24.22.1"                # desk-gateway
-ORCA_VERSION="1.4.268"                   # Orca desktop package, run headless as `orca-ide serve`
-ORCA_DEB_SHA256="ce08aa4bb05972ee3acc89f6c97ce6140c84014a14b0c7e70fe6ece1b40b28a7"   # change together with ORCA_VERSION
+ORCA_VERSION="1.4.271"                   # Orca desktop package, run headless as `orca-ide serve`
+ORCA_DEB_SHA256="7fad3d721dc0b0920f248353f5391fe0138331791acb64c9677c7a91bf41e755"   # change together with ORCA_VERSION
 # Orca server (tailnet only; clients pair with `orca-ide pair --address <tailnet ip>`)
 ORCA_PORT="6768"
 ORCA_ADDRESS=""                          # pairing address; default: this VPS's tailnet IPv4

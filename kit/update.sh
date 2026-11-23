@@ -13,8 +13,8 @@ case "$CONF" in -h|--help) echo "Usage: $0 [fleet.conf]"; exit 0 ;; esac
 [ ! -f "$CONF" ] || . "$CONF"
 FLEET_HOME=${FLEET_HOME:-$HOME/fleet}
 OPT_DIR=${OPT_DIR:-$HOME/opt}
-ORCA_VERSION=${ORCA_VERSION:-1.4.268}
-ORCA_DEB_SHA256=${ORCA_DEB_SHA256:-ce08aa4bb05972ee3acc89f6c97ce6140c84014a14b0c7e70fe6ece1b40b28a7}
+ORCA_VERSION=${ORCA_VERSION:-1.4.271}
+ORCA_DEB_SHA256=${ORCA_DEB_SHA256:-7fad3d721dc0b0920f248353f5391fe0138331791acb64c9677c7a91bf41e755}
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 
 if [[ -n $(git -C "$DESK_FLEET_DIR" status --porcelain) ]]; then
