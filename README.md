@@ -30,22 +30,33 @@ Every tool takes an optional `machine`. Safety on the machine: `denyPaths` and d
 | `/desk:status` | This directory's binding, whether desk is on here, machine health |
 | `/desk:use <machine> [dir]` | Bind this directory to a machine and folder (writes `./.desk.json`; applies immediately) |
 | `/desk:off` · `/desk:on` | Turn desk off/on for this directory. Off denies the tools at once and stops loading the plugin in new sessions here, so its tool descriptions cost nothing |
-| `/desk:handoff start · to codex · take · status` | Pass a task back and forth with an agent on the machine (see below) |
+| `/desk:handoff start · to · take · run · inbox · status` | Pass a task between agents on any machines and take it back (see below) |
 | `/desk:help` | Short usage guide |
 
 Without a binding, calls go to the `default` machine in `machines.json` and its `defaultDir`. The same switches exist in a shell: `desk status | use <machine> [dir] | unbind | off | on`, and `desk-copy <from> <to>` for scripts.
 
 ## Handoff between agents
 
-`/desk:handoff` passes one task in a Git repository on a machine between Claude (on the VPS) and an agent there (Codex for now), as many times as needed: A → B → A → …
+`handoff` passes one task between participants named `agent@machine` — Claude, Codex, Antigravity or anything else, on any machine, in any direction: `claude@pc-home → codex@pc-home → agy@pc-work → claude@vps → …`. The machine is where the task's files live, so Claude on the VPS working on pc-home through desk is `claude@pc-home`.
 
-- **Each agent resumes its own session** (`codex exec resume`, the Claude session you are in), so a returning agent still has its full context and only needs what changed while it was away.
-- **One note per hop.** The outgoing agent writes a short note (done, state, tried and dropped, decisions, next) into `.handoff/outbox.md`; the script appends it to `.handoff/log.md` with who, when, which session and which snapshot range.
-- **Snapshots, not summaries, for the facts.** Each hop commits the whole working tree to `refs/handoff/<n>` (the branch, index and stash are untouched), so the receiver checks the note against `git diff refs/handoff/<a> refs/handoff/<b>`.
-- **Transcripts by reference.** Codex runs are saved under `.handoff/runs/`; entries point to them for lookups instead of passing them along.
-- **One owner at a time**, recorded in `.handoff/state`; `.handoff/` is excluded from Git.
+- **The ledger is the source of truth, not agent memory.** Each hop is one commit on the hub: a snapshot of the task's files plus `state.json` (owner, status, epoch, op id, sessions), `task.md` and `log.md` (one note per hop). An agent that resumes its own session (`codex exec resume`, `claude --resume`) keeps its context and only needs what changed; one that cannot can continue from the ledger.
+- **Agents only write notes.** They read `.handoff/` (README, task, log, `changes.diff`: the files changed since they last held the task) and write `.handoff/outbox.md`. `handoff` does the snapshots, checks and pushes, so agents need no CLI, network or credentials, and sandboxed agents work.
+- **The hub is the authority.** A pre-receive hook lets only the owner's machine (or a hub admin) move a task, requires every transition to raise the epoch by one, and refuses force-pushes and deletes. Every operation has an op id, so retrying after a lost push response does not hand off twice.
+- **It never overwrites work.** Snapshots use a private Git directory (`~/.handoff/repo.git`): the project's own `.git`, branch, index and stash are untouched, and plain folders work too. `take` stops if the directory has changes it did not sync, or if a new directory is not empty.
+- **It keeps things out.** `.env*`, keys, credentials files, `node_modules`, virtualenvs and caches are never snapshotted (add more in `.handoffignore`; `.gitignore` applies too); new content is scanned for private keys and tokens, and per-file and total sizes are capped.
+- **Launching is optional.** `handoff run` starts or resumes an agent from a launcher (built in: codex, claude; others in `~/.handoff/config.json`) and hands the task back when it stops. Without a launcher, the user opens the agent and tells it to take the handoff.
 
-The machine side is a single Git Bash script, [handoff/handoff.sh](handoff/handoff.sh), copied into `.handoff/`; any agent can follow `.handoff/README.md`.
+```sh
+handoff start fix-login --as claude --dir D:/git/app      # you own it; fill .handoff/task.md
+handoff pass fix-login codex@pc-home --as claude          # note from .handoff/outbox.md
+handoff take fix-login --as codex && handoff run fix-login --then claude@pc-home
+handoff inbox                                            # on any machine: tasks waiting there
+handoff take fix-login --as claude                        # prints what is new; .handoff/changes.diff
+```
+
+Setup: one hub, e.g. on the VPS: `handoff hub-init ~/handoff/hub.git --admins vps`. Each machine: `handoff setup --machine <name> --hub <url> --root <dir for received tasks>`; a remote machine reaches the hub with its own SSH key restricted in `authorized_keys` to `command="python3 ~/handoff/hub.git/hooks/handoff.py serve <machine> ~/handoff/hub.git",restrict`, which also fixes its identity. Needs Python 3 and Git. The client is the single file [handoff/handoff.py](handoff/handoff.py).
+
+Not yet: leases and heartbeats for long runs, a runner that picks up tasks automatically, and parallel work on one task.
 
 ## Install
 
@@ -94,12 +105,12 @@ On the VPS run `kit/new-machine.sh start <name>` and follow the printed PowerShe
 | Path | |
 |---|---|
 | `.claude-plugin/`, `commands/`, `skills/`, `bin/` | The Claude Code plugin and its launchers |
-| `handoff/` | Machine-side script for `/desk:handoff` |
+| `handoff/` | The `handoff` client and hub hook (`/desk:handoff`) |
 | `packages/gateway` | stdio MCP gateway: tool definitions, binding, forwarding, Copy |
 | `packages/node` | desk-node (Windows service): files, search, commands, output archive, checkpoints, transfers |
 | `deploy/node` | Windows build, install and service scripts |
 | `kit` | Bootstrap, update, doctor and machine-join scripts |
 
-Tests: `cd packages/gateway && node --test test/*.test.mjs`; `cd packages/node && npm ci && node --test test/unit/*.test.mjs`; `python3 -m unittest discover -s tests` (includes the handoff script, with a stub Codex).
+Tests: `cd packages/gateway && node --test test/*.test.mjs`; `cd packages/node && npm ci && node --test test/unit/*.test.mjs`; `python3 -m unittest discover -s tests` (includes handoff: three simulated machines, a real hub and a stub Codex).
 
 Nothing secret lives in the repository: tokens stay in `~/.config/desk-fleet/tokens/` (0600) and on each machine under `C:\desk-node\data`.

@@ -6,7 +6,7 @@
 
 - `.claude-plugin/plugin.json`、`marketplace.json`：插件清单；MCP 服务定义在 plugin.json 里。
 - `commands/`：`/desk:status`、`/desk:use`、`/desk:off`、`/desk:on`、`/desk:handoff`、`/desk:help`。
-- `handoff/handoff.sh`：`/desk:handoff` 在工程机上的脚本（复制到仓库的 `.handoff/`），测试在 `tests/test_handoff.py`。
+- `handoff/handoff.py`：`handoff` 客户端和 hub 钩子（`/desk:handoff` 用它），单文件、只依赖 Python 3 和 Git；`bin/handoff` 是入口，测试在 `tests/test_handoff.py`。
 - `skills/desk/SKILL.md`：使用规则。规则写在这里，不写进工具描述，工具描述每轮都要发送。
 - `bin/`：`desk-node24`（找 Node 24）、`desk-gateway`、`desk`（开关和绑定）、`desk-copy`。
 - `packages/gateway`：工具定义（`defs.mjs`）、绑定（`binding.mjs`）、机器清单、转发、取消、Copy、`desk` CLI。
@@ -26,7 +26,7 @@ gateway 使用 Node 24。运行时的机器令牌、machines.json、用户登录
 
 - **A. desk 工具（默认）**：当前会话直接读写、搜索、跑命令，同步，有 denyPaths、令牌保护和自动检查点。
 - **B. Orca 派活**：`orca orchestration worker-start --on <工程机> --agent codex`，由工程机上的 agent 完成一段任务后汇报。适合一次性的长任务或并行任务；desk 的保护不适用。同一目录不要同时被 A 和 B 修改。
-- **来回接力用 `/desk:handoff`**：任务在 Claude 与工程机上的 Codex 之间多次往返。各方续接自己的原生会话，每跳只传一条交接说明和工作区快照的 diff（`refs/handoff/<n>`），原始记录只给路径。台账在仓库的 `.handoff/`，同一时间只有 owner 修改工作区。
+- **任务接力用 `handoff`（`/desk:handoff`）**：任务在任意机器上的任意 agent 之间往返，参与者写作 `agent@machine`（machine 是文件所在的机器）。每跳是 hub（VPS 上的裸仓库）上的一个提交：文件快照加台账（state、task、log）。hub 钩子是所有权的权威。agent 只写交接说明，快照、校验、推送都由 `handoff` 完成。快照放在私有 Git 目录里，不碰项目的 `.git`。take 不覆盖未同步的修改。台账才是事实依据，agent 的会话续接只是优化。
 
 ## 开发约定
 

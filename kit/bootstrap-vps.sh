@@ -99,9 +99,9 @@ echo "desk plugin: $("$HOME/.local/bin/claude" plugin list 2>/dev/null | grep -A
 step "5. desk / desk-copy on PATH"
 mkdir -p "$HOME/.local/bin"
 # rm first: older setups made these symlinks into the repo, and writing through one overwrites the script.
-for c in desk desk-copy; do rm -f "$HOME/.local/bin/$c"; ln -s "$FLEET_REPO/bin/$c" "$HOME/.local/bin/$c"; done
+for c in desk desk-copy handoff; do rm -f "$HOME/.local/bin/$c"; ln -s "$FLEET_REPO/bin/$c" "$HOME/.local/bin/$c"; done
 rm -f "$HOME/.local/bin/fleet-workspace"
-echo "~/.local/bin/desk, ~/.local/bin/desk-copy"
+echo "~/.local/bin/desk, ~/.local/bin/desk-copy, ~/.local/bin/handoff"
 
 # ---------- 6. Orca (desktop package, run headless as `orca-ide serve`; no sudo, no Electron window) ----------
 step "6. Orca $ORCA_VERSION and user services"

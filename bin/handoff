@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# handoff client (see handoff/handoff.py). Needs python3 and git.
+exec python3 "$(dirname "$(readlink -f "$0")")/../handoff/handoff.py" "$@"
