@@ -30,9 +30,22 @@ Every tool takes an optional `machine`. Safety on the machine: `denyPaths` and d
 | `/desk:status` | This directory's binding, whether desk is on here, machine health |
 | `/desk:use <machine> [dir]` | Bind this directory to a machine and folder (writes `./.desk.json`; applies immediately) |
 | `/desk:off` · `/desk:on` | Turn desk off/on for this directory. Off denies the tools at once and stops loading the plugin in new sessions here, so its tool descriptions cost nothing |
+| `/desk:handoff start · to codex · take · status` | Pass a task back and forth with an agent on the machine (see below) |
 | `/desk:help` | Short usage guide |
 
 Without a binding, calls go to the `default` machine in `machines.json` and its `defaultDir`. The same switches exist in a shell: `desk status | use <machine> [dir] | unbind | off | on`, and `desk-copy <from> <to>` for scripts.
+
+## Handoff between agents
+
+`/desk:handoff` passes one task in a Git repository on a machine between Claude (on the VPS) and an agent there (Codex for now), as many times as needed: A → B → A → …
+
+- **Each agent resumes its own session** (`codex exec resume`, the Claude session you are in), so a returning agent still has its full context and only needs what changed while it was away.
+- **One note per hop.** The outgoing agent writes a short note (done, state, tried and dropped, decisions, next) into `.handoff/outbox.md`; the script appends it to `.handoff/log.md` with who, when, which session and which snapshot range.
+- **Snapshots, not summaries, for the facts.** Each hop commits the whole working tree to `refs/handoff/<n>` (the branch, index and stash are untouched), so the receiver checks the note against `git diff refs/handoff/<a> refs/handoff/<b>`.
+- **Transcripts by reference.** Codex runs are saved under `.handoff/runs/`; entries point to them for lookups instead of passing them along.
+- **One owner at a time**, recorded in `.handoff/state`; `.handoff/` is excluded from Git.
+
+The machine side is a single Git Bash script, [handoff/handoff.sh](handoff/handoff.sh), copied into `.handoff/`; any agent can follow `.handoff/README.md`.
 
 ## Install
 
@@ -81,11 +94,12 @@ On the VPS run `kit/new-machine.sh start <name>` and follow the printed PowerShe
 | Path | |
 |---|---|
 | `.claude-plugin/`, `commands/`, `skills/`, `bin/` | The Claude Code plugin and its launchers |
+| `handoff/` | Machine-side script for `/desk:handoff` |
 | `packages/gateway` | stdio MCP gateway: tool definitions, binding, forwarding, Copy |
 | `packages/node` | desk-node (Windows service): files, search, commands, output archive, checkpoints, transfers |
 | `deploy/node` | Windows build, install and service scripts |
 | `kit` | Bootstrap, update, doctor and machine-join scripts |
 
-Tests: `cd packages/gateway && node --test test/*.test.mjs`; `cd packages/node && npm ci && node --test test/unit/*.test.mjs`; `python3 -m unittest discover -s tests`.
+Tests: `cd packages/gateway && node --test test/*.test.mjs`; `cd packages/node && npm ci && node --test test/unit/*.test.mjs`; `python3 -m unittest discover -s tests` (includes the handoff script, with a stub Codex).
 
 Nothing secret lives in the repository: tokens stay in `~/.config/desk-fleet/tokens/` (0600) and on each machine under `C:\desk-node\data`.
